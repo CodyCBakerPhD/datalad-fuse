@@ -1,4 +1,12 @@
-"""fsspec caches suited to the random access patterns of, e.g., HDF5 readers"""
+"""fsspec caches suited to the random access patterns of, e.g., HDF5 readers
+
+.. note::
+   `CoalescingBlockCache` only differs from fsspec's ``"blockcache"`` in
+   fetching runs of consecutive missing blocks with one request.  Once
+   fsspec's ``BlockCache`` does so too (proposed in
+   https://github.com/CodyCBakerPhD/filesystem_spec/pull/1), this module can be
+   dropped in favor of ``cache_type="blockcache"``.
+"""
 
 from __future__ import annotations
 
