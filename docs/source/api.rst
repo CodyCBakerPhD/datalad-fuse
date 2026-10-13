@@ -35,6 +35,12 @@ Opening files: ``datalad_fuse.fsspec``
    :undoc-members:
    :show-inheritance:
 
+.. currentmodule:: datalad_fuse.caching
+
+.. autoclass:: CoalescingBlockCache
+
+.. autodata:: COALESCING_BLOCK_CACHE
+
 
 git-annex helpers: ``datalad_fuse.utils``
 =========================================
