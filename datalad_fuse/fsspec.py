@@ -23,6 +23,7 @@ from fsspec.exceptions import BlocksizeMismatchError
 from fsspec.implementations.cached import CachingFileSystem
 from fsspec.implementations.http import HTTPFileSystem
 
+from . import caching as _caching  # noqa: F401  (registers its cache)
 from .backends import Backend as _Backend
 from .utils import AnnexKey
 
@@ -30,12 +31,45 @@ lgr = logging.getLogger("datalad.fuse.fsspec")
 
 
 class FsspecBackend(_Backend):
-    """Backend using fsspec's HTTPFileSystem (optionally with disk caching)."""
+    """Backend using fsspec's HTTPFileSystem (optionally with disk caching).
+
+    Parameters
+    ----------
+    path : str or Path
+        Top directory of the dataset.
+    caching : bool
+        Whether to keep the fetched data in an on-disk cache in the dataset.
+    block_size : int, optional
+        Size in bytes of the requests for the content of files (fsspec's
+        default if not given).
+    cache_type : str, optional
+        Name of the fsspec cache keeping the content read from files (fsspec's
+        default if not given).  Readers jumping over many small pieces
+        scattered over a file (e.g., HDF5) read much less with
+        ``"coalescing-blockcache"`` (see :mod:`datalad_fuse.caching`) and a
+        small ``block_size`` than with fsspec's default read-ahead cache.
+    cache_options : dict, optional
+        Options for the cache, e.g. ``{"maxblocks": 512}``.
+    """
 
     name = "fsspec"
 
-    def __init__(self, path: str | Path, caching: bool) -> None:
-        fs = HTTPFileSystem(get_client=get_client)
+    def __init__(
+        self,
+        path: str | Path,
+        caching: bool,
+        block_size: Optional[int] = None,
+        cache_type: Optional[str] = None,
+        cache_options: Optional[dict[str, Any]] = None,
+    ) -> None:
+        fs_options: dict[str, Any] = {}
+        if block_size is not None:
+            fs_options["block_size"] = block_size
+        if cache_type is not None:
+            fs_options["cache_type"] = cache_type
+        if cache_options is not None:
+            fs_options["cache_options"] = cache_options
+        fs = HTTPFileSystem(get_client=get_client, **fs_options)
         if caching:
             self.fs: HTTPFileSystem | CachingFileSystem = CachingFileSystem(
                 fs=fs,

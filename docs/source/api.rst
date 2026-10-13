@@ -71,6 +71,12 @@ Backends do the actual reading of remote files; see :ref:`concepts-backends`.
 .. autoclass:: RemfileWrapper
    :members: read, seek, tell, info, close
 
+.. currentmodule:: datalad_fuse.caching
+
+.. autoclass:: CoalescingBlockCache
+
+.. autodata:: COALESCING_BLOCK_CACHE
+
 
 git-annex helpers: ``datalad_fuse.utils``
 =========================================
