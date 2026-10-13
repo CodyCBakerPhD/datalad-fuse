@@ -33,6 +33,7 @@ Opening files: ``datalad_fuse.adapter``
 .. autoclass:: FileState
    :members:
    :undoc-members:
+   :show-inheritance:
 
 .. autofunction:: resolve_backends
 
@@ -98,3 +99,4 @@ FUSE file system: ``datalad_fuse.fuse_``
 
 .. autoclass:: DataLadFUSE
    :no-members:
+   :show-inheritance:

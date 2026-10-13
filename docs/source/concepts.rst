@@ -84,33 +84,14 @@ To see which URLs are tried, and by which backend, enable debug logging (see
 :ref:`troubleshooting-logging`).
 
 Requests answered with a server error (HTTP 5xx) are retried up to four
-times, waiting up to 36 seconds in between, and each retry logs a warning
-"Retrying request to ...".  A server that keeps failing can thus delay
-opening a file by a couple of minutes before the next URL is tried.
-Connection errors are not retried: the next candidate URL is tried right
-away.
+times, with delays of up to 36 seconds (each retry logs "Retrying request to
+..."); after a connection error, the next URL is tried right away.
 
-
-Access is anonymous
--------------------
-
-URLs are accessed without credentials, unless credentials are part of the URL
-itself (e.g. ``https://user:token@host/...``, as can be the case for git
-remotes).  DataLad's credential store, ``~/.netrc`` or AWS credentials are not
-consulted, so content that requires authentication (for example embargoed
-DANDI data or private repositories) cannot be read this way; use ``datalad
-get`` for it.
-
-HTTP proxies configured with the ``http_proxy``/``https_proxy`` environment
-variables are not used either, so where the internet can only be reached
-through a proxy, remote content cannot be read.
-
-Content is not verified
------------------------
-
-``datalad get`` and ``git annex get`` verify downloaded content against its
-key's checksum.  ``datalad-fuse`` reads parts of files and does not verify
-them, so it relies on the URLs serving the right content.
+URLs are accessed anonymously: credentials are only used if they are part of
+the URL itself (e.g. ``https://user:token@host/...`` for some git remotes),
+and HTTP proxies set with ``http_proxy``/``https_proxy`` are not used.  Unlike
+``datalad get``, ``datalad-fuse`` does not verify content against the
+checksum in its key.  See :ref:`limitations` for a summary.
 
 
 .. _concepts-backends:
@@ -213,14 +194,14 @@ ondisk`` for ``datalad fusefs`` and ``datalad fsspec-head``), the backends
 store what they fetch on disk and reuse it when the same file is read again,
 also in later sessions.  fsspec uses its `CachingFileSystem
 <https://filesystem-spec.readthedocs.io/en/latest/api.html#fsspec.implementations.cached.CachingFileSystem>`_,
-which keeps blocks for up to a week and fetches them again after that;
-remfile keeps its chunks without an expiry.
+in which a cached file expires a week after it was first cached (its data are
+then fetched again); remfile keeps its chunks without an expiry.
 
 - The caches of a dataset are located inside it, under
   ``.git/datalad/cache/``, one directory per backend (``fsspec/`` and
   ``remfile/``), so each (sub)dataset has its own.
 - Files are cached *sparsely*: only the blocks or chunks that were read are
-  stored.
+  stored, so the cache takes less disk space than the files' sizes suggest.
 - The cache is separate from the git-annex object store: cached files do not
   count as present content for ``git annex`` or ``datalad``.
 - The cache does not shrink by itself.  Remove it with
