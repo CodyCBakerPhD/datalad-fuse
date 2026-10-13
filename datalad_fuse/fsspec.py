@@ -27,6 +27,7 @@ from fsspec.implementations.cached import CachingFileSystem
 from fsspec.implementations.http import HTTPFileSystem
 import methodtools
 
+from . import caching as _caching  # noqa: F401  (registers its cache)
 from .consts import CACHE_SIZE
 from .utils import AnnexKey, is_annex_dir_or_key
 
@@ -68,6 +69,15 @@ class DatasetAdapter:
         If true, paths of key files under ``.git/annex/objects/`` (the targets
         of annexed symlinks) are opened as annexed content, fetched from a
         remote URL if not present locally.
+    fsspec_options : dict, optional
+        Options for fsspec's ``HTTPFileSystem`` reading remote URLs:
+        ``block_size`` (the size in bytes of its requests), ``cache_type``
+        (the name of the fsspec cache keeping what was read) and
+        ``cache_options`` (e.g. ``{"maxblocks": 512}``); fsspec's defaults if
+        not given.  Readers jumping over many small pieces scattered over a
+        file (e.g., HDF5) read much less with ``"coalescing-blockcache"`` (see
+        :mod:`datalad_fuse.caching`) and a small ``block_size`` than with
+        fsspec's default read-ahead cache.
 
     Notes
     -----
@@ -76,7 +86,11 @@ class DatasetAdapter:
     """
 
     def __init__(
-        self, path: str | Path, caching: bool, mode_transparent: bool = False
+        self,
+        path: str | Path,
+        caching: bool,
+        mode_transparent: bool = False,
+        fsspec_options: Optional[dict[str, Any]] = None,
     ) -> None:
         self.path = Path(path)
         self.mode_transparent = mode_transparent
@@ -90,7 +104,7 @@ class DatasetAdapter:
             ds.repo.get_commit_date(), tz=timezone.utc
         )
         self.caching = caching
-        fs = HTTPFileSystem(get_client=get_client)
+        fs = HTTPFileSystem(get_client=get_client, **(fsspec_options or {}))
         if self.caching:
             self.fs = CachingFileSystem(
                 fs=fs,
@@ -596,6 +610,8 @@ class FsspecAdapter:
         Passed to each :class:`DatasetAdapter`.
     mode_transparent : bool
         Passed to each :class:`DatasetAdapter`.
+    **adapter_options
+        Further options passed to each :class:`DatasetAdapter`.
 
     Notes
     -----
@@ -604,11 +620,16 @@ class FsspecAdapter:
     """
 
     def __init__(
-        self, root: str | Path, caching: bool, mode_transparent: bool = False
+        self,
+        root: str | Path,
+        caching: bool,
+        mode_transparent: bool = False,
+        **adapter_options: Any,
     ) -> None:
         self.root = Path(root)
         self.mode_transparent = mode_transparent
         self.caching = caching
+        self.adapter_options = adapter_options
         self.datasets: dict[Path, DatasetAdapter] = {}
 
     def __enter__(self) -> FsspecAdapter:
@@ -658,6 +679,7 @@ class FsspecAdapter:
                 dspath,
                 mode_transparent=self.mode_transparent,
                 caching=self.caching,
+                **self.adapter_options,
             )
         relpath = str(Path(filepath).relative_to(dspath))
         return dsap, relpath
