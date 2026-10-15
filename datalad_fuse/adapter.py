@@ -82,16 +82,9 @@ def resolve_backends(
 
 
 def create_backends(
-    spec: str,
-    path: str | Path,
-    caching: bool,
-    explicit: bool = True,
-    fsspec_options: Optional[dict[str, Any]] = None,
+    spec: str, path: str | Path, caching: bool, explicit: bool = True
 ) -> list[Backend]:
     """Instantiate backends from a comma-separated *spec*.
-
-    *fsspec_options* are passed to the ``fsspec`` backend (see
-    :class:`~datalad_fuse.fsspec.FsspecBackend`).
 
     Backends that cannot be imported are skipped; missing backends requested
     via an *explicit* spec (user argument or config) are logged as warnings,
@@ -106,7 +99,7 @@ def create_backends(
             continue
         try:
             if name == "fsspec":
-                backends.append(FsspecBackend(path, caching, **(fsspec_options or {})))
+                backends.append(FsspecBackend(path, caching))
             elif name == "remfile":
                 backends.append(RemfileBackend(path, caching))
             else:
@@ -225,10 +218,6 @@ class DatasetAdapter:
         fresh ``git clone``), do not run any ``git annex`` command, which would
         initialize it (modifying the repository): annexed files without local
         content then cannot be opened (see :attr:`annex_initialized`).
-    fsspec_options : dict, optional
-        Options for the ``fsspec`` backend, e.g. ``block_size``,
-        ``cache_type`` and ``cache_options`` (see
-        :class:`~datalad_fuse.fsspec.FsspecBackend`).
 
     Notes
     -----
@@ -247,7 +236,6 @@ class DatasetAdapter:
         mode_transparent: bool = False,
         backends: Optional[str] = None,
         init_annex: bool = True,
-        fsspec_options: Optional[dict[str, Any]] = None,
     ) -> None:
         self.path = Path(path)
         self.mode_transparent = mode_transparent
@@ -272,9 +260,7 @@ class DatasetAdapter:
             ds.repo.get_commit_date(), tz=timezone.utc
         )
         spec, explicit = resolve_backends(backends, config=ds.config)
-        self._backends = create_backends(
-            spec, path, caching, explicit=explicit, fsspec_options=fsspec_options
-        )
+        self._backends = create_backends(spec, path, caching, explicit=explicit)
 
     def close(self) -> None:
         """Stop the batched ``git annex`` processes started for the dataset"""
@@ -737,7 +723,7 @@ class RemoteFilesystemAdapter:
         Passed to each :class:`DatasetAdapter`.
     **adapter_options
         Further options passed to each :class:`DatasetAdapter`
-        (``init_annex``, ``fsspec_options``).
+        (``init_annex``).
 
     Notes
     -----
